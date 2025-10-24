@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "dependencies": {
-  	"next": "14.2.5",
+    "next": "14.2.5"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   }
 }
