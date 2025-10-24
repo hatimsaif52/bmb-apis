@@ -1,10 +1,13 @@
-// app/api/reorder/route.js
-export async function POST(req) {
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'GET not supported' });
+  }
+
   try {
-    const { order_id } = await req.json();
+    const { order_id } = req.body;
 
     if (!order_id) {
-      return Response.json({ error: 'Missing order_id' }, { status: 400 });
+      return res.status(400).json({ error: 'Missing order_id' });
     }
 
     const SHOPIFY_SHOP = process.env.SHOPIFY_SHOP;
@@ -22,7 +25,7 @@ export async function POST(req) {
 
     if (!orderResp.ok) {
       const err = await orderResp.text();
-      return Response.json({ error: 'Failed to fetch order', details: err }, { status: 500 });
+      return res.status(500).json({ error: 'Failed to fetch order', details: err });
     }
 
     const { order } = await orderResp.json();
@@ -58,22 +61,18 @@ export async function POST(req) {
 
     if (!draftResp.ok) {
       const err = await draftResp.text();
-      return Response.json({ error: 'Failed to create draft order', details: err }, { status: 500 });
+      return res.status(500).json({ error: 'Failed to create draft order', details: err });
     }
 
     const { draft_order } = await draftResp.json();
 
     // 4️⃣ Return invoice URL
-    return Response.json({
+    return res.status(200).json({
       draft_order_id: draft_order.id,
       invoice_url: draft_order.invoice_url,
     });
   } catch (err) {
-    console.error(err);
-    return Response.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error:', err);
+    return res.status(500).json({ error: 'Internal server error' });
   }
-}
-
-export async function GET() {
-  return Response.json({ message: 'GET not supported' }, { status: 405 });
 }
