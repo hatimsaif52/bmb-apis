@@ -73,3 +73,7 @@ export async function POST(req) {
     return Response.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+export async function GET() {
+  return Response.json({ message: 'GET not supported' }, { status: 405 });
+}
