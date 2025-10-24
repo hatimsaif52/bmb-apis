@@ -1,0 +1,75 @@
+// app/api/reorder/route.js
+export async function POST(req) {
+  try {
+    const { order_id } = await req.json();
+
+    if (!order_id) {
+      return Response.json({ error: 'Missing order_id' }, { status: 400 });
+    }
+
+    const SHOPIFY_SHOP = process.env.SHOPIFY_SHOP;
+    const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
+
+    // 1️⃣ Fetch original order
+    const orderResp = await fetch(
+      `https://${SHOPIFY_SHOP}/admin/api/2024-10/orders/${order_id}.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN,
+        },
+      }
+    );
+
+    if (!orderResp.ok) {
+      const err = await orderResp.text();
+      return Response.json({ error: 'Failed to fetch order', details: err }, { status: 500 });
+    }
+
+    const { order } = await orderResp.json();
+
+    // 2️⃣ Build new draft order payload
+    const draftPayload = {
+      draft_order: {
+        email: order.email,
+        customer: { id: order.customer?.id },
+        shipping_address: order.shipping_address,
+        billing_address: order.billing_address,
+        note: `Reorder from order #${order.name}`,
+        line_items: order.line_items.map((item) => ({
+          variant_id: item.variant_id,
+          quantity: item.quantity,
+        })),
+        use_customer_default_address: true,
+      },
+    };
+
+    // 3️⃣ Create draft order
+    const draftResp = await fetch(
+      `https://${SHOPIFY_SHOP}/admin/api/2024-10/draft_orders.json`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': ACCESS_TOKEN,
+        },
+        body: JSON.stringify(draftPayload),
+      }
+    );
+
+    if (!draftResp.ok) {
+      const err = await draftResp.text();
+      return Response.json({ error: 'Failed to create draft order', details: err }, { status: 500 });
+    }
+
+    const { draft_order } = await draftResp.json();
+
+    // 4️⃣ Return invoice URL
+    return Response.json({
+      draft_order_id: draft_order.id,
+      invoice_url: draft_order.invoice_url,
+    });
+  } catch (err) {
+    console.error(err);
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
