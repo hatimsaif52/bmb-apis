@@ -12,7 +12,8 @@ export default async function handler(req, res) {
 
     const SHOPIFY_SHOP = process.env.SHOPIFY_SHOP;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
-
+    console.log('SHOP URL',SHOPIFY_SHOP);
+    console.log('ADMIN TOKEN',ACCESS_TOKEN);
     // 1️⃣ Fetch original order
     const orderResp = await fetch(
       `https://${SHOPIFY_SHOP}/admin/api/2024-10/orders/${order_id}.json`,
