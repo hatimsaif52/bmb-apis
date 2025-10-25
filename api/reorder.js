@@ -12,9 +12,8 @@ export default async function handler(req, res) {
 
     const SHOPIFY_SHOP = process.env.SHOPIFY_SHOP;
     const ACCESS_TOKEN = process.env.SHOPIFY_ADMIN_TOKEN;
-    console.log('SHOP URL',SHOPIFY_SHOP);
-    console.log('ADMIN TOKEN',ACCESS_TOKEN);
-    // 1️⃣ Fetch original order
+
+    // 1️. Fetch original order
     const orderResp = await fetch(
       `https://${SHOPIFY_SHOP}/admin/api/2024-10/orders/${order_id}.json`,
       {
@@ -31,14 +30,14 @@ export default async function handler(req, res) {
 
     const { order } = await orderResp.json();
 
-    // 2️⃣ Build new draft order payload
+    // 2️. Build new draft order payload
     const draftPayload = {
       draft_order: {
         email: order.email,
         customer: { id: order.customer?.id },
         shipping_address: order.shipping_address,
         billing_address: order.billing_address,
-        note: `Reorder from order #${order.name}`,
+        note: `Reorder from order ${order.name}`,
         line_items: order.line_items.map((item) => ({
           variant_id: item.variant_id,
           quantity: item.quantity,
@@ -47,7 +46,7 @@ export default async function handler(req, res) {
       },
     };
 
-    // 3️⃣ Create draft order
+    // 3️. Create draft order
     const draftResp = await fetch(
       `https://${SHOPIFY_SHOP}/admin/api/2024-10/draft_orders.json`,
       {
@@ -67,7 +66,7 @@ export default async function handler(req, res) {
 
     const { draft_order } = await draftResp.json();
 
-    // 4️⃣ Return invoice URL
+    // 4️. Return invoice URL
     return res.status(200).json({
       draft_order_id: draft_order.id,
       invoice_url: draft_order.invoice_url,
