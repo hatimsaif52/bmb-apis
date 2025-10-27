@@ -39,23 +39,61 @@ export default async function handler(req, res) {
 
     const { order } = await orderResp.json();
 
-    // 2️. Build new draft order payload
+    // 2️. Prepare line items
+    const line_items = order.line_items
+      .filter(item => item.variant_id) // exclude custom/manual items
+      .map(item => ({
+        variant_id: item.variant_id,
+        quantity: item.quantity,
+        custom: false,
+        properties: item.properties || [],
+      }));
+
+    // 3️. Include shipping fee
+    const shipping_line = order.shipping_lines?.[0];
+    const shipping_line_payload = shipping_line
+      ? [
+          {
+            title: shipping_line.title || 'Shipping',
+            price: shipping_line.price || '0.00',
+          },
+        ]
+      : [];
+
+    // 4️. Include discounts
+    const discount_applications = order.discount_applications?.map(discount => ({
+      description: discount.title,
+      value_type: discount.value_type,
+      value: discount.value,
+      target_type: discount.target_type,
+    })) || [];
+
+    // 5️. Create draft order payload
     const draftPayload = {
       draft_order: {
         email: order.email,
         customer: { id: order.customer?.id },
-        shipping_address: order.shipping_address,
         billing_address: order.billing_address,
-        note: `Reorder from order ${order.name}`,
-        line_items: order.line_items.map((item) => ({
-          variant_id: item.variant_id,
-          quantity: item.quantity,
-        })),
+        shipping_address: order.shipping_address,
+        line_items,
+        shipping_line: shipping_line_payload[0],
+        note: order.note || `Reorder from ${order.name}`,
+        note_attributes: order.note_attributes || [],
+        tags: order.tags,
+        applied_discount:
+          discount_applications.length > 0
+            ? {
+                description: discount_applications[0].description,
+                value_type: discount_applications[0].value_type,
+                value: discount_applications[0].value,
+                amount: discount_applications[0].value,
+              }
+            : undefined,
         use_customer_default_address: true,
       },
     };
 
-    // 3️. Create draft order
+    // 6. Create draft order
     const draftResp = await fetch(
       `https://${SHOPIFY_SHOP}/admin/api/2024-10/draft_orders.json`,
       {
